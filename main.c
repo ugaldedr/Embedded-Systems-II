@@ -127,7 +127,50 @@ void getsUart0(char* str, uint8_t maxChars)
     }
 }
 
-int main(void){
+// String parser-lite function to find interesting positions within the input data
+uint8_t* parseStr(char* strInput)
+{
+    uint8_t i;
+    uint8_t count = 0;
+
+    if(isalpha(strInput[0])) // Check edge case to see if first element is of interest
+    {
+        count = count + 1;
+    }
+    for(i = 0;i < strlen(strInput);i++) // Iterate over input data and count up elements of interest
+    {
+        if((!(isalpha(strInput[i])) && !(isdigit(strInput[i]))) && (isalpha(strInput[i + 1])))
+        {
+            count = count + 1;
+        }
+        if((!(isalpha(strInput[i])) && !(isdigit(strInput[i]))) && (isdigit(strInput[i + 1])))
+        {
+            count = count + 1;
+        }
+    }
+
+    uint8_t pos[count];
+
+    if(isalpha(strInput[0]))
+    {
+        pos[0] = 0;
+    }
+    for(i = 0;i < strlen(strInput);i++) // Iterate over data and store locations of elements of interest
+    {
+        if((!(isalpha(strInput[i])) && !(isdigit(strInput[i]))) && (isalpha(strInput[i + 1])))
+        {
+            pos[i] = i;
+        }
+        if((!(isalpha(strInput[i])) && !(isdigit(strInput[i]))) && (isdigit(strInput[i + 1])))
+        {
+            pos[i] = i;
+        }
+    }
+    return pos;
+}
+
+int main(void)
+{
     // Initialize hardware
     initHw();
 
@@ -137,11 +180,14 @@ int main(void){
     waitMicrosecond(500);
 
     char strInput [MAX_CHARS + 1];
+    uint8_t* pos;
     while(1)
     {
         getsUart0(strInput,MAX_CHARS);
         putsUart0("\r\nCommand obtained:\r\n");
         putsUart0(strInput);
+        putsUart0("\r\n");
+        pos = parseStr(strInput);
     }
 
 
