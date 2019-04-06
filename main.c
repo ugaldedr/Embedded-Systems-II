@@ -149,8 +149,13 @@ uint8_t* parseStr(char* strInput)
         }
     }
 
-    uint8_t pos[count];
+    return getData(strInput, count);
+}
 
+uint8_t* getData(char* strInput, uint8_t count)
+{
+    uint8_t pos[count]; // HAVING ISSUES HERE, C DOESN'T LIKE VARIABLE SIZE ARRAYS; MUST BE DETERMINED AT COMPILE TIME, CANNOT USE DYNAMIC MEMORY BECAUSE EMBEDDED SYSTEM
+    uint8_t i = 0;
     if(isalpha(strInput[0]))
     {
         pos[0] = 0;
@@ -168,7 +173,6 @@ uint8_t* parseStr(char* strInput)
     }
     return pos;
 }
-
 int main(void)
 {
     // Initialize hardware
@@ -188,6 +192,12 @@ int main(void)
         putsUart0(strInput);
         putsUart0("\r\n");
         pos = parseStr(strInput);
+        uint8_t i = 0;
+        for(i = 0;i < strlen(pos);i++)
+        {
+            putsUart0(strInput[pos[i]]);
+            putsUart0("\r\n");
+        }
     }
 
 
