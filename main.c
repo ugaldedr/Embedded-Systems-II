@@ -1,11 +1,15 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include "tm4c123gh6pm.h"
+#include "stepOne.h"
+#include "stepTwo.h"
+#include "stepThree.h"
 
 #define RED_LED      (*((volatile uint32_t *)(0x42000000 + (0x400253FC-0x40000000)*32 + 1*4)))
 
 #define RED_LED_MASK 2
 #define MAX_CHARS 80
+#define NULL 0
 
 uint8_t dmxData [512];
 
@@ -41,109 +45,28 @@ void initHw()
     UART0_CTL_R = UART_CTL_TXE | UART_CTL_RXE | UART_CTL_UARTEN; // enable TX, RX, and module
 }
 
-// Approximate busy waiting (in units of microseconds), given a 40 MHz system clock
-void waitMicrosecond(uint32_t us)
+int main(void)
 {
-    __asm("WMS_LOOP0:   MOV  R1, #6");          // 1
-    __asm("WMS_LOOP1:   SUB  R1, #1");          // 6
-    __asm("             CBZ  R1, WMS_DONE1");   // 5+1*3
-    __asm("             NOP");                  // 5
-    __asm("             NOP");                  // 5
-    __asm("             B    WMS_LOOP1");       // 5*2 (speculative, so P=1)
-    __asm("WMS_DONE1:   SUB  R0, #1");          // 1
-    __asm("             CBZ  R0, WMS_DONE0");   // 1
-    __asm("             NOP");                  // 1
-    __asm("             B    WMS_LOOP0");       // 1*2 (speculative, so P=1)
-    __asm("WMS_DONE0:");                        // ---
-                                                // 40 clocks/us + error
-}
-
-// Blocking function that writes a serial character when the UART buffer is not full
-void putcUart0(char c)
-{
-    while (UART0_FR_R & UART_FR_TXFF);
-    UART0_DR_R = c;
-}
-
-// Blocking function that writes a string when the UART buffer is not full
-void putsUart0(char* str)
-{
-    uint8_t i;
-    for (i = 0; i < strlen(str); i++)
-      putcUart0(str[i]);
-}
-
-// Blocking function that returns with serial data once the buffer is not empty
-char getcUart0()
-{
-    while (UART0_FR_R & UART_FR_RXFE);
-    return UART0_DR_R & 0xFF;
-}
-
-// Function to get instruction input from user
-void getsUart0(char* str, uint8_t maxChars)
-{
-    uint8_t count = 0;
-    while(count <= 80)
-    {
-        char c = getcUart0();
-        if(c == 8) // Handling backspaces as input
-        {
-            if(count > 0)
-            {
-                count = count - 1;
-            }
-            else
-            {
-                continue;
-            }
-        }
-
-        if(c == 13) // Handling carriage returns as input
-        {
-            str[count] = 0;
-            break;
-        }
-
-        if(c >= 32) // Handling printable characters as input
-        {
-            str[count] = tolower(c);
-            count = count + 1;
-        }
-        else
-        {
-            continue;
-        }
-
-        if(count == MAX_CHARS) // Terminate input after 80 characters of input
-        {
-            str[count] = 0;
-            break;
-        }
-        else
-        {
-            continue;
-        }
-    }
-}
-
-int main(void){
     // Initialize hardware
     initHw();
 
-    RED_LED = 1;
-    waitMicrosecond(500);
-    RED_LED = 0;
-    waitMicrosecond(500);
+    flashLED();
 
     char strInput [MAX_CHARS + 1];
+    uint8_t* pos = NULL;
     while(1)
     {
+        putsUart0("Enter a command:\r\n");
         getsUart0(strInput,MAX_CHARS);
         putsUart0("\r\nCommand obtained:\r\n");
         putsUart0(strInput);
+        putsUart0("\r\n");
+        pos = parseStr(strInput);
+        putcUart0(strInput[pos[0]]);
+        putcUart0(strInput[pos[1]]);
+        putcUart0(strInput[pos[2]]);
+        putsUart0("\r\n");
     }
-
 
 	return 0;
 }
