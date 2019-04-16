@@ -82,6 +82,4 @@ void getsUart0(char* str, uint8_t maxChars)
     }
 }
 
-
-
 #endif /* STEPTWO_H_ */

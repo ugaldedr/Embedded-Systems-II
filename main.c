@@ -1,9 +1,11 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include "tm4c123gh6pm.h"
+
 #include "stepOne.h"
 #include "stepTwo.h"
 #include "stepThree.h"
+#include "stepFour.h"
 
 #define RED_LED      (*((volatile uint32_t *)(0x42000000 + (0x400253FC-0x40000000)*32 + 1*4)))
 
@@ -45,6 +47,21 @@ void initHw()
     UART0_CTL_R = UART_CTL_TXE | UART_CTL_RXE | UART_CTL_UARTEN; // enable TX, RX, and module
 }
 
+char* getVerb(char* strInput, uint8_t* pos)
+{
+    char string[80];
+    uint8_t c = pos[0];
+    uint8_t count = 0;
+    while(isalpha(strInput[c]))
+    {
+        string[count] = strInput[c];
+        count++;
+        c++;
+    }
+    string[count] = 0;
+    return string;
+}
+
 int main(void)
 {
     // Initialize hardware
@@ -53,7 +70,10 @@ int main(void)
     flashLED();
 
     char strInput [MAX_CHARS + 1];
-    uint8_t* pos = NULL;
+    uint32_t* pos = NULL;
+    char* strVerb = NULL;
+    uint32_t fieldCount = 0;
+    uint32_t minArgs = 0;
     while(1)
     {
         putsUart0("Enter a command:\r\n");
@@ -62,10 +82,16 @@ int main(void)
         putsUart0(strInput);
         putsUart0("\r\n");
         pos = parseStr(strInput);
-        putcUart0(strInput[pos[0]]);
-        putcUart0(strInput[pos[1]]);
-        putcUart0(strInput[pos[2]]);
+        fieldCount = getFieldCount(strInput);
+        minArgs = fieldCount - 1;
+        strVerb = getVerb(strInput, pos);
+        putsUart0(strVerb);
         putsUart0("\r\n");
+        if(isCommand(strVerb, minArgs)){
+            putsUart0("This is a valid command.");
+            putsUart0("\r\n");
+        }
+
     }
 
 	return 0;
