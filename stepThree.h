@@ -15,7 +15,7 @@
 uint32_t* parseStr(char* strInput)
 {
     uint8_t i;
-    uint32_t pos[3];
+    static uint32_t pos[3];
     uint8_t count = 0;
 
     if(isalpha(strInput[0])) // Check edge case to see if first element is of interest

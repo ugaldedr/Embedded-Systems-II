@@ -47,19 +47,19 @@ void initHw()
     UART0_CTL_R = UART_CTL_TXE | UART_CTL_RXE | UART_CTL_UARTEN; // enable TX, RX, and module
 }
 
-char* getVerb(char* strInput, uint8_t* pos)
+char* getVerb(char* strInput, uint32_t* pos)
 {
-    char string[80];
+    char stringVerb[80];
     uint8_t c = pos[0];
     uint8_t count = 0;
     while(isalpha(strInput[c]))
     {
-        string[count] = strInput[c];
+        stringVerb[count] = strInput[c];
         count++;
         c++;
     }
-    string[count] = 0;
-    return string;
+    stringVerb[count] = 0;
+    return stringVerb;
 }
 
 int main(void)
@@ -69,24 +69,47 @@ int main(void)
 
     flashLED();
 
+    // Data variables
     char strInput [MAX_CHARS + 1];
-    uint32_t* pos = NULL;
     char* strVerb = NULL;
+    char* value = NULL;
+    uint16_t add = 0;
+    uint16_t data = 0;
     uint32_t fieldCount = 0;
     uint32_t minArgs = 0;
+    uint32_t* pos = NULL;
+
     while(1)
     {
         putsUart0("Enter a command:\r\n");
         getsUart0(strInput,MAX_CHARS);
-        putsUart0("\r\nCommand obtained:\r\n");
+        putsUart0("\r\nUser Input:\r\n");
         putsUart0(strInput);
         putsUart0("\r\n");
         pos = parseStr(strInput);
         fieldCount = getFieldCount(strInput);
         minArgs = fieldCount - 1;
         strVerb = getVerb(strInput, pos);
-        putsUart0(strVerb);
-        putsUart0("\r\n");
+        if(minArgs >= 1)
+        {
+            add = getValue(strInput, pos + 1);
+            if(add > 511)
+            {
+                putsUart0("Invalid DMX address.");
+                putsUart0("\r\n");
+                continue;
+            }
+        }
+        if(minArgs == 2)
+        {
+            data = getValue(strInput, pos + 2);
+            if(data > 511)
+            {
+                putsUart0("Invalid data.");
+                putsUart0("\r\n");
+                continue;
+            }
+        }
         if(isCommand(strVerb, minArgs)){
             putsUart0("This is a valid command.");
             putsUart0("\r\n");

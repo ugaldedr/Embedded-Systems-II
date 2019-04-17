@@ -11,6 +11,26 @@
 #ifndef STEPFOUR_H_
 #define STEPFOUR_H_
 
+uint16_t getValue(char* strInput, uint32_t* spot)
+{
+    char string[10];
+    uint32_t loc = *(spot);
+    uint8_t c = 0;
+    while(strInput[loc] != ' ' && strInput[loc] != ',' && strInput[loc] != 0)
+    {
+        string[c] = strInput[loc];
+        if(!isdigit(string[c]))
+        {
+            return 512;
+        }
+        c++;
+        loc++;
+    }
+    string[c] = 0;
+    loc = loc - c;
+    return atoi(string);
+}
+
 // Determine if the user input is a valid command
 bool isCommand(char* strVerb, uint8_t minArgs)
 {
@@ -51,12 +71,6 @@ bool isCommand(char* strVerb, uint8_t minArgs)
         putsUart0("\r\nUser input is not a valid command or was misunderstood.\r\n");
         return false;
     }
-}
-
-// Determine what address is being modified when "set" is called
-uint16_t getValue(uint8_t argNo)
-{
-    return 0;
 }
 
 // Determine the data value that will replace the data at element determined in getValue
