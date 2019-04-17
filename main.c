@@ -1,9 +1,11 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include "tm4c123gh6pm.h"
+
 #include "stepOne.h"
 #include "stepTwo.h"
 #include "stepThree.h"
+#include "stepFour.h"
 
 #define RED_LED      (*((volatile uint32_t *)(0x42000000 + (0x400253FC-0x40000000)*32 + 1*4)))
 
@@ -45,6 +47,21 @@ void initHw()
     UART0_CTL_R = UART_CTL_TXE | UART_CTL_RXE | UART_CTL_UARTEN; // enable TX, RX, and module
 }
 
+char* getVerb(char* strInput, uint32_t* pos)
+{
+    char stringVerb[80];
+    uint8_t c = pos[0];
+    uint8_t count = 0;
+    while(isalpha(strInput[c]))
+    {
+        stringVerb[count] = strInput[c];
+        count++;
+        c++;
+    }
+    stringVerb[count] = 0;
+    return stringVerb;
+}
+
 int main(void)
 {
     // Initialize hardware
@@ -52,20 +69,52 @@ int main(void)
 
     flashLED();
 
+    // Data variables
     char strInput [MAX_CHARS + 1];
-    uint8_t* pos = NULL;
+    char* strVerb = NULL;
+    char* value = NULL;
+    uint16_t add = 0;
+    uint16_t data = 0;
+    uint32_t fieldCount = 0;
+    uint32_t minArgs = 0;
+    uint32_t* pos = NULL;
+
     while(1)
     {
         putsUart0("Enter a command:\r\n");
         getsUart0(strInput,MAX_CHARS);
-        putsUart0("\r\nCommand obtained:\r\n");
+        putsUart0("\r\nUser Input:\r\n");
         putsUart0(strInput);
         putsUart0("\r\n");
         pos = parseStr(strInput);
-        putcUart0(strInput[pos[0]]);
-        putcUart0(strInput[pos[1]]);
-        putcUart0(strInput[pos[2]]);
-        putsUart0("\r\n");
+        fieldCount = getFieldCount(strInput);
+        minArgs = fieldCount - 1;
+        strVerb = getVerb(strInput, pos);
+        if(minArgs >= 1)
+        {
+            add = getValue(strInput, pos + 1);
+            if(add > 511)
+            {
+                putsUart0("Invalid DMX address.");
+                putsUart0("\r\n");
+                continue;
+            }
+        }
+        if(minArgs == 2)
+        {
+            data = getValue(strInput, pos + 2);
+            if(data > 511)
+            {
+                putsUart0("Invalid data.");
+                putsUart0("\r\n");
+                continue;
+            }
+        }
+        if(isCommand(strVerb, minArgs)){
+            putsUart0("This is a valid command.");
+            putsUart0("\r\n");
+        }
+
     }
 
 	return 0;
