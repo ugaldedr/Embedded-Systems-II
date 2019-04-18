@@ -73,10 +73,19 @@ bool isCommand(char* strVerb, uint8_t minArgs)
     }
 }
 
-// Determine the data value that will replace the data at element determined in getValue
-char* getString(uint8_t argNo)
+char* getVerb(char* strInput, uint32_t* pos)
 {
-    return 0;
+    char stringVerb[80];
+    uint8_t c = pos[0];
+    uint8_t count = 0;
+    while(isalpha(strInput[c]))
+    {
+        stringVerb[count] = strInput[c];
+        count++;
+        c++;
+    }
+    stringVerb[count] = 0;
+    return stringVerb;
 }
 
 #endif /* STEPFOUR_H_ */

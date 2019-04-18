@@ -6,6 +6,7 @@
 #include "stepTwo.h"
 #include "stepThree.h"
 #include "stepFour.h"
+#include "stepFive.h"
 
 #define RED_LED      (*((volatile uint32_t *)(0x42000000 + (0x400253FC-0x40000000)*32 + 1*4)))
 
@@ -47,21 +48,6 @@ void initHw()
     UART0_CTL_R = UART_CTL_TXE | UART_CTL_RXE | UART_CTL_UARTEN; // enable TX, RX, and module
 }
 
-char* getVerb(char* strInput, uint32_t* pos)
-{
-    char stringVerb[80];
-    uint8_t c = pos[0];
-    uint8_t count = 0;
-    while(isalpha(strInput[c]))
-    {
-        stringVerb[count] = strInput[c];
-        count++;
-        c++;
-    }
-    stringVerb[count] = 0;
-    return stringVerb;
-}
-
 int main(void)
 {
     // Initialize hardware
@@ -79,6 +65,7 @@ int main(void)
     uint32_t minArgs = 0;
     uint32_t* pos = NULL;
 
+    setZeroDMXData(dmxData);
     while(1)
     {
         putsUart0("Enter a command:\r\n");
@@ -111,8 +98,46 @@ int main(void)
             }
         }
         if(isCommand(strVerb, minArgs)){
-            putsUart0("This is a valid command.");
-            putsUart0("\r\n");
+            if(!strcmp(strVerb,"device"))
+            {
+
+            }
+            if(!strcmp(strVerb,"controller"))
+            {
+
+            }
+            if(!strcmp(strVerb,"clear"))
+            {
+                setZeroDMXData(dmxData);
+            }
+            if(!strcmp(strVerb,"set"))
+            {
+                dmxData[add] = data;
+            }
+            if(!strcmp(strVerb,"get"))
+            {
+                char number[10];
+                sprintf(number, "%d", dmxData[add]);
+                putsUart0(number);
+                putsUart0("\r\n");
+            }
+            if(!strcmp(strVerb,"max"))
+            {
+
+            }
+            if(!strcmp(strVerb,"on"))
+            {
+
+            }
+            if(!strcmp(strVerb,"off"))
+            {
+
+            }
+        }
+        else
+        {
+            putsUart0("User input is not valid.\r\n");
+            continue;
         }
 
     }
