@@ -20,13 +20,4 @@ void setZeroDMXData(uint8_t* Ddata)
     }
 }
 
-char* toString(uint8_t num)
-{
-    static char string[10];
-
-
-}
-
-
-
 #endif /* STEPFIVE_H_ */
