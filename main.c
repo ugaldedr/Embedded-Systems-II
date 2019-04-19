@@ -1,5 +1,9 @@
 #include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h> // atoi
+#include <string.h> // strlen, strcmp
 #include <stdbool.h>
+#include <ctype.h> // tolower, isdigit, isalpha
 #include "tm4c123gh6pm.h"
 
 #include "stepOne.h"
@@ -58,7 +62,6 @@ int main(void)
     // Data variables
     char strInput [MAX_CHARS + 1];
     char* strVerb = NULL;
-    char* value = NULL;
     uint16_t add = 0;
     uint16_t data = 0;
     uint32_t fieldCount = 0;
@@ -142,5 +145,4 @@ int main(void)
 
     }
 
-	return 0;
 }
