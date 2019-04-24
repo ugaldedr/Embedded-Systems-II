@@ -1,9 +1,5 @@
 #include <stdint.h>
-#include <stdio.h>
-#include <stdlib.h> // atoi
-#include <string.h> // strlen, strcmp
 #include <stdbool.h>
-#include <ctype.h> // tolower, isdigit, isalpha
 #include "tm4c123gh6pm.h"
 
 #include "stepOne.h"
@@ -19,6 +15,8 @@
 #define NULL 0
 
 uint8_t dmxData [512];
+uint16_t phase = 0;
+uint16_t max = 400;
 
 // Initialize Hardware
 void initHw()
@@ -30,7 +28,12 @@ void initHw()
     SYSCTL_GPIOHBCTL_R = 0;
 
     // Enable GPIO port F peripherals
-    SYSCTL_RCGC2_R = SYSCTL_RCGC2_GPIOA | SYSCTL_RCGC2_GPIOF;
+    SYSCTL_RCGC2_R = SYSCTL_RCGC2_GPIOA | SYSCTL_RCGC2_GPIOC | SYSCTL_RCGC2_GPIOF;
+
+    // Enable clocks
+    SYSCTL_RCGCUART_R |= SYSCTL_RCGCUART_R0;         // turn-on UART0, leave other uarts in same status
+    SYSCTL_RCGCUART_R |= SYSCTL_RCGCUART_R1;         // turn-on UART1
+    SYSCTL_RCGCTIMER_R |= SYSCTL_RCGCTIMER_R1;       // turn-on timer
 
     // Configure LED pin
     GPIO_PORTF_DIR_R = RED_LED_MASK;  // make bit an output
@@ -50,6 +53,84 @@ void initHw()
     UART0_FBRD_R = 45;                               // round(fract(r)*64)=45
     UART0_LCRH_R = UART_LCRH_WLEN_8 | UART_LCRH_FEN; // configure for 8N1 w/ 16-level FIFO
     UART0_CTL_R = UART_CTL_TXE | UART_CTL_RXE | UART_CTL_UARTEN; // enable TX, RX, and module
+
+    // Configure UART1 pins driven to zero to start
+    GPIO_PORTC_DEN_R &= ~0x20;
+
+    // Configure Timer 1
+    TIMER1_CTL_R &= ~TIMER_CTL_TAEN;                 // turn-off timer before reconfiguring
+    TIMER1_CFG_R = TIMER_CFG_32_BIT_TIMER;           // configure as 32-bit timer (A+B)
+    TIMER1_TAMR_R = TIMER_TAMR_TAMR_PERIOD;          // configure for periodic mode (count down)
+    TIMER1_TAILR_R = 0x1B80;                         // set load value to 7040 to interrupt every 176us
+    TIMER1_IMR_R = TIMER_IMR_TATOIM;                 // turn-on interrupts
+    NVIC_EN0_R |= 1 << (INT_TIMER1A-16);             // turn-on interrupt 37 (TIMER1A)
+    TIMER1_CTL_R |= TIMER_CTL_TAEN;                  // turn-on timer
+}
+
+// timer interrupt used to handle step 6
+void timer1ISR()
+{
+    if(phase == 0)
+    {
+        //putsUart0("Phase 0\r\n");
+        GPIO_PORTC_DEN_R |= 0x20;
+        TIMER1_CTL_R &= ~TIMER_CTL_TAEN;                 // turn-off timer before reconfiguring
+        TIMER1_TAILR_R = 0x1E0;                         // set load value to 480 to interrupt every 12us
+        phase = 1;
+        TIMER1_CTL_R |= TIMER_CTL_TAEN;                  // turn-on timer
+    }
+    if(phase == 1)
+    {
+        //putsUart0("Phase 1\r\n");
+        TIMER1_CTL_R &= ~TIMER_CTL_TAEN;                 // turn-off timer before reconfiguring
+        TIMER1_TAILR_R = 0x1B80;
+
+        // Configure UART1 pins
+        SYSCTL_RCGCUART_R |= SYSCTL_RCGCUART_R1;         // turn-on UART0, leave other uarts in same status
+        GPIO_PORTC_AFSEL_R |= 0x20;                      // default, added for clarity
+        GPIO_PORTC_PCTL_R = GPIO_PCTL_PC5_U1TX;
+
+        // Configure UART1 to 250000 baud, 8N2 format (must be 3 clocks from clock enable and config writes)
+        UART1_CTL_R = 0;                                 // turn-off UART1 to allow safe programming
+        UART1_CC_R = UART_CC_CS_SYSCLK;                  // use system clock (40 MHz)
+        UART1_IBRD_R = 5;                               // r = 40 MHz / (Nx250kkHz), set floor(r)=21, where N=16
+        UART1_FBRD_R = 0;                               // round(fract(r)*0)=0
+        UART1_LCRH_R = UART_LCRH_WLEN_8 | UART_LCRH_STP2; // configure for 8N2
+        UART1_CTL_R = UART_CTL_TXE | UART_CTL_UARTEN | UART_CTL_EOT;   // enable TX and module
+        UART1_IM_R |= UART_IM_TXIM;                     // turn on tx interrupt
+        NVIC_EN0_R |= 1 << (INT_UART1-16);              // turn-on interrupt 22(UART1)
+        while (UART1_FR_R & UART_FR_TXFF);
+            UART1_DR_R = 0;
+
+        phase = 2;
+    }
+    TIMER1_ICR_R = TIMER_ICR_TATOCINT;
+}
+
+void Uart1Isr()
+{
+//    char number[10];
+//    sprintf(number, "%d", phase);
+//    putsUart0(number);
+//    putsUart0("\r\n");
+    UART1_ICR_R = UART_ICR_TXIC;
+    if(phase - 2 < max)
+    {
+        while (UART1_FR_R & UART_FR_TXFF);
+            UART1_DR_R = dmxData[phase - 2];
+        phase++;
+    }
+    else
+    {
+        NVIC_EN0_R &= ~(1 << (INT_UART1-16));              // turn-off interrupt 22(UART1)
+        phase = 0;
+        UART1_CTL_R = 0;
+        GPIO_PORTC_PCTL_R &= ~GPIO_PCTL_PC5_U1TX;
+        GPIO_PORTC_AFSEL_R &= ~0x20;
+        SYSCTL_RCGCUART_R &= ~SYSCTL_RCGCUART_R1;
+        TIMER1_CTL_R |= TIMER_CTL_TAEN;
+    }
+
 }
 
 int main(void)
@@ -62,6 +143,7 @@ int main(void)
     // Data variables
     char strInput [MAX_CHARS + 1];
     char* strVerb = NULL;
+    char* value = NULL;
     uint16_t add = 0;
     uint16_t data = 0;
     uint32_t fieldCount = 0;
@@ -100,7 +182,8 @@ int main(void)
                 continue;
             }
         }
-        if(isCommand(strVerb, minArgs)){
+        if(isCommand(strVerb, minArgs))
+        {
             if(!strcmp(strVerb,"device"))
             {
 
@@ -123,10 +206,11 @@ int main(void)
                 sprintf(number, "%d", dmxData[add]);
                 putsUart0(number);
                 putsUart0("\r\n");
+                continue;
             }
             if(!strcmp(strVerb,"max"))
             {
-
+                max = add;
             }
             if(!strcmp(strVerb,"on"))
             {
@@ -139,10 +223,10 @@ int main(void)
         }
         else
         {
-            putsUart0("User input is not valid.\r\n");
+            putsUart0("User input is not a valid command or was misunderstood.\r\n");
             continue;
         }
-
     }
 
+	return 0;
 }

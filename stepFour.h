@@ -68,7 +68,6 @@ bool isCommand(char* strVerb, uint8_t minArgs)
     }
     else
     {
-        putsUart0("\r\nUser input is not a valid command or was misunderstood.\r\n");
         return false;
     }
 }
